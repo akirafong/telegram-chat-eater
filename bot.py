@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from ast import literal_eval
 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-from telegram.error import BadRequest
+from telegram.error import BadRequest, TimedOut
 
 try:
     with open('messages_to_delete') as f:
@@ -41,11 +41,18 @@ def handle_new_message(bot, update):
     if update.message.text == '/oi':
         update.message.reply_text('I\'m alive')
 
-    # Delete all queued messages
+    # Delete all messages
     if update.message.text == '/nuke':
         logging.info('Nuking...')
+        message_id_source = range(0, update.message['message_id'])
 
-        for message_id in messages_to_delete.copy():
+    # Delete all queued messages
+    if update.message.text == '/clear':
+        logging.info('Clearing queue...')
+        message_id_source = messages_to_delete.copy()
+
+    if update.message.text in ('/nuke', '/clear'):
+        for message_id in message_id_source:
             try:
                 if updater.bot.delete_message(GROUP_ID, message_id):
                     logging.info('Deleted message with ID {}'.format(message_id))
@@ -56,6 +63,8 @@ def handle_new_message(bot, update):
             except BadRequest:
                 logging.warning('Message with ID {} was already deleted'.format(message_id))
                 delete_id_from_dict(message_id)
+            except TimedOut:
+                pass
 
 def delete_messages():
     while RUNNING:
